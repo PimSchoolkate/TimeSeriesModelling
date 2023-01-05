@@ -72,12 +72,77 @@ boxplot(lnserie~floor(time(lnserie)))
 mean vs variance shows this better:
 Variance is nearly stable.
 ```{r}
-groupedserie <- matrix(lnserie[1:(30*12)],ncol=30) #12 quarters=3yrs
+groupedserie <- matrix(lnserie[1:(36*10)],ncol=10) #12 quarters=3yrs
+
+boxplot(groupedserie)
 
 m<-apply(groupedserie,2,mean)
 v<-apply(groupedserie,2,var)
 plot(v~m)
 abline(lm(v~m),col=2,lty=3)
 ```
+
+```{r}
+plot(lnserie)
+abline(h=mean(lnserie), col="red")
+```
+
+Check for seasonality:
+there seems to be a small seasonal effect of 12 months
+
+```{r}
+monthplot(lnserie)
+```
+
+```{r}
+ts.plot(matrix(lnserie,nrow=12), col=1:12)
+```
+
+```{r}
+d12lnserie <- diff(lnserie,12)
+plot(d12lnserie)
+abline(h=mean(d12lnserie), col="red")
+
+monthplot(d12lnserie)
+```
+
+get the mean to be zero
+
+```{r}
+d1d12lnserie <- diff(d12lnserie)
+plot(d1d12lnserie)
+abline(h=mean(d1d12lnserie), col="red")
+```
+
+```{r}
+d1d1d12lnserie <- diff(d1d12lnserie)
+plot(d1d1d12lnserie)
+abline(h=mean(d1d12lnserie), col="red")
+```
+
+d1d12lnserie is clearly the best...
+
+```{r}
+var(lnserie)
+var(d12lnserie)
+var(d1d12lnserie)
+var(d1d1d12lnserie)
+```
+
+Seasonal:
+tails off in PACF thus we have a MA(Q=1)
+
+Non-seasonal:
+so we have 
+1. AR(p=2)
+2. MA(q=2)
+3. ARMA(p=2, q=2)
+
+```{r}
+par(mfrow=c(1,2))
+acf(d1d12lnserie, ylim=c(-1,1), lag.max = 72,col=c(2,rep(1,11)),lwd=2)
+pacf(d1d12lnserie, ylim=c(-1,1), lag.max = 72,col=c(rep(1,11),2),lwd=2)
+```
+
 
 
