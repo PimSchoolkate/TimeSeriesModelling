@@ -74,11 +74,11 @@ Variance is nearly stable.
 ```{r}
 groupedserie <- matrix(lnserie[1:(36*10)],ncol=10) #12 quarters=3yrs
 
-boxplot(groupedserie)
+boxplot(groupedserie, main="Boxplots for the log-transformed series (3-year period)")
 
 m<-apply(groupedserie,2,mean)
 v<-apply(groupedserie,2,var)
-plot(v~m)
+plot(v~m, main="Mean-variance plot for the log-transformed series (3-year period)")
 abline(lm(v~m),col=2,lty=3)
 ```
 
@@ -91,11 +91,11 @@ Check for seasonality:
 there seems to be a small seasonal effect of 12 months
 
 ```{r}
-monthplot(lnserie)
+monthplot(lnserie, main="Monthly plot")
 ```
 
 ```{r}
-ts.plot(matrix(lnserie,nrow=12), col=1:12)
+ts.plot(matrix(lnserie,nrow=12), col=1:12, main="Plot along the months for years 1990-2020")
 ```
 
 ```{r}
