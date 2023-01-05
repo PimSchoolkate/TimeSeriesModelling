@@ -402,5 +402,87 @@ validation(ARIMA.best)
 ```
 
 
+## STABILITY TESTING
+
+```{r}
+ultim=c(2018,12)
+pdq=c(0,1,2)
+PDQ=c(0,1,2)
+
+serie2=window(serie,end=ultim)
+lnserie2=log(serie2)
+serie1=window(serie,end=ultim+c(1,0))
+lnserie1=log(serie1)
+
+(modA=arima(lnserie1,order=pdq,seasonal=list(order=PDQ,period=12)))
+(modB=arima(lnserie2,order=pdq,seasonal=list(order=PDQ,period=12)))
+```
+
+```{r}
+pred=predict(modB,n.ahead=12)
+pr<-ts(c(tail(lnserie2,1),pred$pred),start=ultim,freq=12)
+se<-ts(c(0,pred$se),start=ultim,freq=12)
+
+#Intervals
+tl<-ts(exp(pr-1.96*se),start=ultim,freq=12)
+tu<-ts(exp(pr+1.96*se),start=ultim,freq=12)
+pr<-ts(exp(pr),start=ultim,freq=12)
+
+ts.plot(serie,tl,tu,pr,
+        lty=c(1,2,2,1),
+        col=c(1,4,4,2),
+        lwd=2,
+        xlim=ultim[1]+c(-2,+2),
+        type="o",
+        main=paste("Model ARIMA(",
+                   paste(pdq,collapse=","),")(",
+                   paste(PDQ,collapse=","),")12",sep=""))
+abline(v=(ultim[1]-2):(ultim[1]+2),lty=3,col=4)
+legend(x="bottomleft", c("Timeseries", "Lower CI", "Upper CI", "Prediction"), col=c(1,4,4,2), lwd=2, lty=c(1,2,2,1))
+```
+
+## PREDICTION
+
+
+```{r}
+start = c(2019,12)
+pred=predict(ARIMA.best,n.ahead=12)
+pr<-ts(c(tail(lnserie,1),pred$pred),start=start,freq=12)
+se<-ts(c(0,pred$se),start=start,freq=12)
+
+#Intervals
+tl<-ts(exp(pr-1.96*se),start=start,freq=12)
+tu<-ts(exp(pr+1.96*se),start=start,freq=12)
+pr<-ts(exp(pr),start=start,freq=12)
+
+ts.plot(serie,tl,tu,pr,
+        lty=c(1,2,2,1),
+        col=c(1,4,4,2),
+        lwd=2,
+        xlim=ultim[1]+c(-2,+3),
+        type="o",
+        main=paste("Model ARIMA(",
+                   paste(pdq,collapse=","),")(",
+                   paste(PDQ,collapse=","),")12",sep=""))
+abline(v=(ultim[1]-2):(ultim[1]+3),lty=3,col=4)
+legend(x="bottomleft", c("Timeseries", "Lower CI", "Upper CI", "Prediction"), col=c(1,4,4,2), lwd=2, lty=c(1,2,2,1))
+```
+
+Just checking that the stability test and prediction are not the same... they look very similar
+
+```{r}
+pred=predict(modB,n.ahead=12)
+pr<-ts(c(tail(lnserie2,1),pred$pred),start=ultim,freq=12)
+```
+
+```{r}
+pred=predict(ARIMA.best,n.ahead=12)
+pr.test<-ts(c(tail(lnserie,1),pred$pred),start=ultim,freq=12)
+
+pr - pr.test
+```
+
+
+
 
 
