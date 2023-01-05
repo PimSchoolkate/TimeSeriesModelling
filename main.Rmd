@@ -3,9 +3,81 @@ title: "Untitled"
 author: "Pim"
 date: "1/5/2023"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+```{r}
+serie=window(ts(read.table("RenewUSA.dat", header=F),start=1990,freq=12))
+```
+
+```{r}
+plot(serie,main="Total production of renewable energy (USA)")
+abline(v=1990:2020,col=4,lty=3)
+```
+
+We have a hint that variance is not constant from boxplots per year
+
+
+```{r}
+boxplot(serie~floor(time(serie)))
+```
+
+mean vs variance shows this better:
+
+```{r}
+groupedserie <- matrix(serie[1:(30*12)],ncol=30) #12 quarters=3yrs
+
+m<-apply(groupedserie,2,mean)
+v<-apply(groupedserie,2,var)
+plot(v~m)
+abline(lm(v~m),col=2,lty=3)
+```
+
+We also check it for every 3 years to be more assertive of our hypothesis:
+
+```{r}
+groupedserie <- matrix(serie[1:(36*10)],ncol=10) #12 quarters=3yrs together=ncol=12
+boxplot(groupedserie)
+```
+
+confirmed by mean vs variance.
+
+```{r}
+m<-apply(groupedserie,2,mean)
+v<-apply(groupedserie,2,var)
+plot(v~m)
+abline(lm(v~m),col=2,lty=3)
+```
+
+Thus apply log-transformation to remove variance
+
+```{r}
+lnserie=log(serie)
+plot(lnserie)
+abline(v=1947:2020,col=4,lty=3)
+abline(h=0)
+```
+
+check again the variance
+
+```{r}
+boxplot(lnserie~floor(time(lnserie)))
+```
+
+mean vs variance shows this better:
+Variance is nearly stable.
+```{r}
+groupedserie <- matrix(lnserie[1:(30*12)],ncol=30) #12 quarters=3yrs
+
+m<-apply(groupedserie,2,mean)
+v<-apply(groupedserie,2,var)
+plot(v~m)
+abline(lm(v~m),col=2,lty=3)
+```
+
 
