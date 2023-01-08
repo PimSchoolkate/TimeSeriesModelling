@@ -239,7 +239,7 @@ AIC(ARMA.02.01, ARMA.20.01, ARMA.22.01,
     ARIMA.210.011, ARIMA.012.011, ARIMA.212.011)
 ```
 
-```{r}
+```{r, eval=F}
 model_search <- function(series, p.range, q.range, P.range, Q.range) {
   aic.best = 0
   best_combination = ""
@@ -295,7 +295,7 @@ AIC(ARIMA.best, ARIMA.012.011)
 
 ```{r}
 #################Validation#################################
-validation=function(model){
+validation=function(model,dades){
   s=frequency(get(model$series))
   resid=model$residuals
   par(mfrow=c(2,2),mar=c(3,3,3,3))
@@ -322,6 +322,12 @@ validation=function(model){
   pacf(resid,ylim=c(-1,1),lag.max=60,col=c(rep(1,s-1),2),lwd=1)
   par(mfrow=c(1,1))
   
+  #ACF & PACF of square residuals 
+  par(mfrow=c(1,2))
+  acf(resid^2,ylim=c(-1,1),lag.max=60,col=c(2,rep(1,s-1)),lwd=1)
+  pacf(resid^2,ylim=c(-1,1),lag.max=60,col=c(rep(1,s-1),2),lwd=1)
+  par(mfrow=c(1,1))
+  
   #Ljung-Box p-values
   par(mar=c(2,2,1,1))
   tsdiag(model,gof.lag=7*s)
@@ -334,71 +340,81 @@ validation=function(model){
   cat("\nModul of MA Characteristic polynomial Roots: ",
       Mod(polyroot(c(1,model$model$theta))),"\n")
   
-  suppressMessages(require(forecast,quietly=TRUE,warn.conflicts=FALSE))
-  plot(model)
-  
   #Model expressed as an MA infinity (psi-weights)
   psis=ARMAtoMA(ar=model$model$phi,ma=model$model$theta,lag.max=36)
   names(psis)=paste("psi",1:36)
   cat("\nPsi-weights (MA(inf))\n")
   cat("\n--------------------\n")
-  print(psis[1:24])
+  print(psis[1:20])
   
   #Model expressed as an AR infinity (pi-weights)
   pis=-ARMAtoMA(ar=-model$model$theta,ma=-model$model$phi,lag.max=36)
   names(pis)=paste("pi",1:36)
   cat("\nPi-weights (AR(inf))\n")
   cat("\n--------------------\n")
-  print(pis[1:24])
-   
-  cat("\nDescriptive Statistics for the Residuals\n")
-  cat("\n----------------------------------------\n") 
-  
-  suppressMessages(require(fBasics,quietly=TRUE,warn.conflicts=FALSE))
-  ##Anderson-Darling test
-  print(basicStats(resid))
+  print(pis[1:20])
   
   ## Add here complementary tests (use with caution!)
   ##---------------------------------------------------------
   cat("\nNormality Tests\n")
   cat("\n--------------------\n")
  
+  
+  suppressMessages(require(forecast, quietly = TRUE, warn.conflicts=FALSE))
+  plot(model)
+  
   ##Shapiro-Wilks Normality test
-  print(shapiro.test(resid))
+  print(shapiro.test(resid(model)))
 
   suppressMessages(require(nortest,quietly=TRUE,warn.conflicts=FALSE))
   ##Anderson-Darling test
-  print(ad.test(resid))
+  print(ad.test(resid(model)))
   
   suppressMessages(require(tseries,quietly=TRUE,warn.conflicts=FALSE))
   ##Jarque-Bera test
-  print(jarque.bera.test(resid))
+  print(jarque.bera.test(resid(model)))
   
   cat("\nHomoscedasticity Test\n")
   cat("\n--------------------\n")
   suppressMessages(require(lmtest,quietly=TRUE,warn.conflicts=FALSE))
   ##Breusch-Pagan test
   obs=get(model$series)
-  print(bptest(resid~I(obs-resid)))
+  print(bptest(resid(model)~I(obs-resid(model))))
   
   cat("\nIndependence Tests\n")
   cat("\n--------------------\n")
   
   ##Durbin-Watson test
-  print(dwtest(resid~I(1:length(resid))))
+  print(dwtest(resid(model)~I(1:length(resid(model)))))
   
   ##Ljung-Box test
   cat("\nLjung-Box test\n")
   print(t(apply(matrix(c(1:4,(1:4)*s)),1,function(el) {
-    te=Box.test(resid,type="Ljung-Box",lag=el)
+    te=Box.test(resid(model),type="Ljung-Box",lag=el)
     c(lag=(te$parameter),statistic=te$statistic[[1]],p.value=te$p.value)})))
   
+
+  #Sample ACF vs. Teoric ACF
+  par(mfrow=c(2,2),mar=c(3,3,3,3))
+  acf(dades, ylim=c(-1,1) ,lag.max=36,main="Sample ACF")
+  
+  plot(ARMAacf(model$model$phi,model$model$theta,lag.max=36),ylim=c(-1,1), 
+       type="h",xlab="Lag",  ylab="", main="ACF Teoric")
+  abline(h=0)
+  
+  #Sample PACF vs. Teoric PACF
+  pacf(dades, ylim=c(-1,1) ,lag.max=36,main="Sample PACF")
+  
+  plot(ARMAacf(model$model$phi,model$model$theta,lag.max=36, pacf=T),ylim=c(-1,1),
+       type="h", xlab="Lag", ylab="", main="PACF Teoric")
+  abline(h=0)
+  par(mfrow=c(1,1))
 }
 ################# Fi Validation #################################
 ```
 
 ```{r}
-validation(ARIMA.best)
+validation(ARIMA.best, lnserie)
 ```
 
 
@@ -451,11 +467,11 @@ pr<-ts(c(tail(lnserie,1),pred$pred),start=start,freq=12)
 se<-ts(c(0,pred$se),start=start,freq=12)
 
 #Intervals
-tl<-ts(exp(pr-1.96*se),start=start,freq=12)
-tu<-ts(exp(pr+1.96*se),start=start,freq=12)
-pr<-ts(exp(pr),start=start,freq=12)
+tl1<-ts(exp(pr-1.96*se),start=start,freq=12)
+tu1<-ts(exp(pr+1.96*se),start=start,freq=12)
+pr1<-ts(exp(pr),start=start,freq=12)
 
-ts.plot(serie,tl,tu,pr,
+ts.plot(serie,tl1,tu1,pr1,
         lty=c(1,2,2,1),
         col=c(1,4,4,2),
         lwd=2,
@@ -467,6 +483,12 @@ ts.plot(serie,tl,tu,pr,
 abline(v=(ultim[1]-2):(ultim[1]+3),lty=3,col=4)
 legend(x="bottomleft", c("Timeseries", "Lower CI", "Upper CI", "Prediction"), col=c(1,4,4,2), lwd=2, lty=c(1,2,2,1))
 ```
+
+
+```{r}
+(previs1=window(cbind(tl1,pr1,tu1),start=ultim+c(1,0)))
+```
+
 
 Just checking that the stability test and prediction are not the same... they look very similar
 
@@ -482,7 +504,171 @@ pr.test<-ts(c(tail(lnserie,1),pred$pred),start=ultim,freq=12)
 pr - pr.test
 ```
 
+```{r}
+obs=window(serie,start=ultim)
+mod.RMSE1=sqrt(sum((obs-pr)^2)/12)
+mod.MAE1=sum(abs(obs-pr))/12
+mod.RMSPE1=sqrt(sum(((obs-pr)/obs)^2)/12)
+mod.MAPE1=sum(abs(obs-pr)/obs)/12
+
+data.frame("RMSE"=mod.RMSE1,"MAE"=mod.MAE1,"RMSPE"=mod.RMSPE1,"MAPE"=mod.MAPE1)
+```
 
 
+
+## OUTLIERS
+
+```{r}
+source("atipics2.r")
+
+##Detection of outliers: In this case, we have applied a regular and a seasonal differentiation of order $S=12$. We set the criterion to $crit = 2.8$ and also the argument LS to TRUE.
+## The crit value chosen by the researcher is typically fixed around 3; the LS argument is optional (= TRUE if one aims to detect a level shift)
+
+ARIMA.atip=outdetec(ARIMA.best,dif=c(1,12),crit=2.8,LS=T) # automatic detection of outliers with crit=2.8 and LS =TRUE
+
+#Estimated residual variance after outliers detection and treatment
+ARIMA.atip$sigma
+```
+
+```{r}
+atipics=ARIMA.atip$atip[order(ARIMA.atip$atip[,1]),]
+months=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+
+data.frame(atipics,Date=paste(months[(atipics[,1]-1)%%12+1],start(lnserie)[1]+((atipics[,1]-1)%/%12)),perc.Obs=exp(atipics[,3])*100)
+```
+
+```{r}
+lnserie.lin=lineal(lnserie,ARIMA.atip$atip)
+serie.lin=exp(lnserie.lin)
+
+plot(serie.lin,col=2)
+lines(serie)
+abline(v=1990:2020, col="gray",lty=3)
+legend(x="topleft", legend=c("Without Outliers", "With Outliers"), col=c(2,1), lwd=2)
+```
+
+```{r}
+plot(lnserie-lnserie.lin)
+```
+
+```{r}
+d1d12lnserie.lin=diff(diff(lnserie.lin,12))
+par(mfrow=c(1,2))
+acf(d1d12lnserie.lin,ylim=c(-1,1),lag.max=72,col=c(2,rep(1,11)),lwd=2)
+pacf(d1d12lnserie.lin,ylim=c(-1,1),lag.max=72,col=c(rep(1,11),2),lwd=2)
+
+par(mfrow=c(1,1))
+```
+
+```{r}
+(ARIMA.lin=arima(lnserie.lin,order=c(0,1,2),seasonal=list(order=c(0,1,2),period=12)))
+ARIMA.best
+```
+
+```{r}
+validation(ARIMA.lin, lnserie.lin)
+```
+
+## Check for stability
+
+```{r}
+ultim=c(2018,12)
+pdq=c(0,1,1)
+PDQ=c(2,1,0)
+
+serie1.lin=window(serie.lin,end=ultim+c(1,0))
+lnserie1.lin=log(serie1.lin)
+serie2.lin=window(serie.lin,end=ultim)
+lnserie2.lin=log(serie2.lin)
+
+(mod.lin=arima(lnserie1.lin,order=pdq,seasonal=list(order=PDQ,period=12)))
+(mod2.lin=arima(lnserie2.lin,order=pdq,seasonal=list(order=PDQ,period=12)))
+```
+
+```{r}
+pred=predict(mod2,n.ahead=12)
+pr<-ts(c(tail(lnserie2,1),pred$pred),start=ultim,freq=12)
+se<-ts(c(0,pred$se),start=ultim,freq=12)
+
+#Intervals
+tl<-ts(exp(pr-1.96*se),start=ultim,freq=12)
+tu<-ts(exp(pr+1.96*se),start=ultim,freq=12)
+pr<-ts(exp(pr),start=ultim,freq=12)
+
+ts.plot(serie,tl,tu,pr,
+        lty=c(1,2,2,1),
+        col=c(1,4,4,2),
+        lwd=2,
+        xlim=ultim[1]+c(-2,+2),
+        type="o",
+        main=paste("Model ARIMA(",
+                   paste(pdq,collapse=","),")(",
+                   paste(PDQ,collapse=","),")12",sep=""))
+abline(v=(ultim[1]-2):(ultim[1]+2),lty=3,col=4)
+legend(x="bottomleft", c("Timeseries", "Lower CI", "Upper CI", "Prediction"), col=c(1,4,4,2), lwd=2, lty=c(1,2,2,1))
+```
+
+```{r}
+(previs.lin=window(cbind(tl,pr,tu,serie,error=round(serie-pr,3)),start=ultim))
+```
+
+```{r}
+obs=window(serie,start=ultim)
+mod.RMSE2=sqrt(sum((obs-pr)^2)/12)
+mod.MAE2=sum(abs(obs-pr))/12
+mod.RMSPE2=sqrt(sum(((obs-pr)/obs)^2)/12)
+mod.MAPE2=sum(abs(obs-pr)/obs)/12
+
+data.frame("RMSE"=mod.RMSE2,"MAE"=mod.MAE2,"RMSPE"=mod.RMSPE2,"MAPE"=mod.MAPE2)
+```
+
+```{r}
+mCI2=mean(tu-tl)
+
+cat("\nMean Length CI: ",mCI2)
+```
+
+
+
+## OUTLIER PREDICTION
+
+
+```{r}
+start = c(2019,12)
+pred=predict(ARIMA.lin,n.ahead=12)
+pr<-ts(c(tail(lnserie,1),pred$pred),start=start,freq=12)
+se<-ts(c(0,pred$se),start=start,freq=12)
+
+#Intervals
+tl2<-ts(exp(pr-1.96*se),start=start,freq=12)
+tu2<-ts(exp(pr+1.96*se),start=start,freq=12)
+pr2<-ts(exp(pr),start=start,freq=12)
+
+ts.plot(serie,tl2,tu2,pr2,
+        lty=c(1,2,2,1),
+        col=c(1,4,4,2),
+        lwd=2,
+        xlim=ultim[1]+c(-2,+3),
+        type="o",
+        main=paste("Model ARIMA(",
+                   paste(pdq,collapse=","),")(",
+                   paste(PDQ,collapse=","),")12",sep=""))
+abline(v=(ultim[1]-2):(ultim[1]+3),lty=3,col=4)
+legend(x="bottomleft", c("Timeseries", "Lower CI", "Upper CI", "Prediction"), col=c(1,4,4,2), lwd=2, lty=c(1,2,2,1))
+```
+
+```{r}
+(previs2=window(cbind(tl2,pr2,tu2),start=ultim+c(1,0)))
+```
+
+```{r}
+cbind(previs1,previs2)
+```
+
+```{r}
+ts.plot(serie,tl1,tu1,pr1,tl2,tu2,pr2,lty=c(1,2,2,1,2,2,1),lwd=2,col=c(1,4,4,2,3,3,6),xlim=ultim[1]+c(1,3),type="o",main="AIRBCN")
+legend("bottomleft",c("95% CI - \t ARIMA(0,1,2)(0,1,2)12","Prediction - \t ARIMA(0,1,2)(0,1,2)12","95% CI - \t ARIMA(0,1,2)(0,1,2)12 with outlier treatment","Prediction - \t ARIMA(0,1,2)(0,1,2)12 with outlier treatment"),col=c(4,2,3,6),lty=1,lwd=2)
+abline(v=ultim[1]+1:3,lty=3,col=4)
+```
 
 
