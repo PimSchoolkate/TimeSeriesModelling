@@ -166,6 +166,11 @@ ARMA.20.01
 ```
 
 ```{r}
+ARMA.20.01$coef/sqrt(diag(ARMA.20.01$var.coef))
+```
+
+
+```{r}
 t.ratio(ARMA.20.01)
 significance(ARMA.20.01)
 ```
@@ -275,7 +280,7 @@ best model is ARIMA(0,1,2)(0,1,2)
 lets check if q,Q=3 (very unlikely..)
 Answer is no..
 
-```{r}
+```{r, eval=F}
 model_search(lnserie,
              p.range = c(0),
              q.range = c(1,2,3),
@@ -528,14 +533,59 @@ ARIMA.atip=outdetec(ARIMA.best,dif=c(1,12),crit=2.8,LS=T) # automatic detection 
 
 #Estimated residual variance after outliers detection and treatment
 ARIMA.atip$sigma
+ARIMA.best$sigma
+
+ARIMA.best$sigma / ARIMA.atip$sigma
+
 ```
 
 ```{r}
 atipics=ARIMA.atip$atip[order(ARIMA.atip$atip[,1]),]
 months=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
 
-data.frame(atipics,Date=paste(months[(atipics[,1]-1)%%12+1],start(lnserie)[1]+((atipics[,1]-1)%/%12)),perc.Obs=exp(atipics[,3])*100)
+(d <- data.frame(atipics,Date=paste(months[(atipics[,1]-1)%%12+1],start(lnserie)[1]+((atipics[,1]-1)%/%12)),perc.Obs=exp(atipics[,3])*100))
 ```
+
+```{r}
+
+TC = 1990 + (d$Obs[d$type_detected=="TC"]-1)/12
+LS = 1990 + (d$Obs[d$type_detected=="LS"]-1)/12
+AO = 1990 + (d$Obs[d$type_detected=="AO"]-1)/12
+
+length(TC)
+length(LS)
+length(AO)
+
+plot(ts(serie, start=c(1990,1), freq=12),main="Visualization of Outliers 1990-2019")
+points(TC, serie[d$Obs[d$type_detected=="TC"]], col=4, pch=19, lwd=3)
+points(LS, serie[d$Obs[d$type_detected=="LS"]], col=6, pch=19, lwd=3)
+points(AO, serie[d$Obs[d$type_detected=="AO"]], col=7, pch=19, lwd=3)
+
+abline(v=1990:2020,col=4,lty=3)
+legend("topleft", legend=c("Transitory Change", "Level Shifts", "Additive Outliers"), col=c(4,6,7), pch=19)
+```
+
+```{r}
+TC = 1990 + (d$Obs[d$type_detected=="TC"]-1)/12
+LS = 1990 + (d$Obs[d$type_detected=="LS"]-1)/12
+AO = 1990 + (d$Obs[d$type_detected=="AO"]-1)/12
+
+plot(ts(serie, start=c(1990,1), end=c(2004,12), freq=12),main="Visualization of Outliers 1990-2004")
+points(TC, serie[d$Obs[d$type_detected=="TC"]], col=4, pch=19, lwd=3)
+points(LS, serie[d$Obs[d$type_detected=="LS"]], col=6, pch=19, lwd=3)
+points(AO, serie[d$Obs[d$type_detected=="AO"]], col=7, pch=19, lwd=3)
+
+abline(v=1990:2020,col=4,lty=3)
+legend("topleft", legend=c("Transitory Change", "Level Shifts", "Additive Outliers"), col=c(4,6,7), pch=19)
+```
+
+```{r}
+data <- ts(rnorm(100), start = c(1996,1), end = c(2004,4), frequency = 12)
+plot(data)
+ind <- 1996 + c(0,9,66)/12
+points(ind, data[c(1,10,67)], pch = 19, col = 'red')
+```
+
 
 ```{r}
 lnserie.lin=lineal(lnserie,ARIMA.atip$atip)
@@ -603,7 +653,7 @@ ts.plot(serie,tl,tu,pr,
         type="o",
         main=paste("Model ARIMA(",
                    paste(pdq,collapse=","),")(",
-                   paste(PDQ,collapse=","),")12",sep=""))
+                   paste(PDQ,collapse=","),")12, without outliers",sep=""))
 abline(v=(ultim[1]-2):(ultim[1]+2),lty=3,col=4)
 legend(x="bottomleft", c("Timeseries", "Lower CI", "Upper CI", "Prediction"), col=c(1,4,4,2), lwd=2, lty=c(1,2,2,1))
 ```
@@ -666,7 +716,7 @@ cbind(previs1,previs2)
 ```
 
 ```{r}
-ts.plot(serie,tl1,tu1,pr1,tl2,tu2,pr2,lty=c(1,2,2,1,2,2,1),lwd=2,col=c(1,4,4,2,3,3,6),xlim=ultim[1]+c(1,3),type="o",main="AIRBCN")
+ts.plot(serie,tl1,tu1,pr1,tl2,tu2,pr2,lty=c(1,2,2,1,2,2,1),lwd=2,col=c(1,4,4,2,3,3,6),xlim=ultim[1]+c(1,3),type="o",main="Predictions with and without outliers")
 legend("bottomleft",c("95% CI - \t ARIMA(0,1,2)(0,1,2)12","Prediction - \t ARIMA(0,1,2)(0,1,2)12","95% CI - \t ARIMA(0,1,2)(0,1,2)12 with outlier treatment","Prediction - \t ARIMA(0,1,2)(0,1,2)12 with outlier treatment"),col=c(4,2,3,6),lty=1,lwd=2)
 abline(v=ultim[1]+1:3,lty=3,col=4)
 ```
